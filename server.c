@@ -16,8 +16,6 @@
 #define PORT 5555
 #define MAXMSG 512
 
-
-
 /* makeSocket
  * Creates and names a socket in the Internet
  * name-space. The socket created exists
@@ -102,9 +100,12 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in clientName;
   socklen_t size;
 
+  //Connected client sockets
   int client[100];
   int clientCount = 0;
 
+  //Blacklisted IPs
+  char blacklist_ip[] = "127.0.0.1";
 
   /* Create a socket and set it up to accept connections */
   sock = makeSocket(PORT);
@@ -130,29 +131,35 @@ int main(int argc, char *argv[]) {
     for(i = 0; i < FD_SETSIZE; ++i)
       if(FD_ISSET(i, &readFdSet)) {
       	if(i == sock) {
-      	  /* Connection request on original socket */
-      	  size = sizeof(struct sockaddr_in);
-      	  /* Accept the connection request from a client. */
-      	  clientSocket = accept(sock, (struct sockaddr *)&clientName, (socklen_t *)&size);
-      	  if(clientSocket < 0) {
-      	    perror("Could not accept connection\n");
-      	    exit(EXIT_FAILURE);
-      	  }
-
+    	  /* Connection request on original socket */
+    	  size = sizeof(struct sockaddr_in);
+    	  /* Accept the connection request from a client. */
+    	  clientSocket = accept(sock, (struct sockaddr *)&clientName, (socklen_t *)&size);
+    	  if(clientSocket < 0) {
+    	    perror("Could not accept connection\n");
+    	    exit(EXIT_FAILURE);
+    	  }
+        //Check blacklist
+        if(strcmp(inet_ntoa(clientName.sin_addr), blacklist_ip)){
+          //Close connection for blacklisted IP:
+        }else{
+          //Continue as normal
           /* Add connected client to list of connected clients */
           client[clientCount++] = clientSocket;
 
-          /* Inform other clients of new peers */
+          /* Inform other clients of new peers -- Construct message */
+          char message[100];
+          int portNumber = (int) ntohs(clientName.sin_port);
+          char portNumberStr[10];
+          sprintf(portNumberStr, "%d", portNumber);
+          strcpy(message, inet_ntoa(clientName.sin_addr));
+          strcat(message, ":");
+          strcat(message, portNumberStr);
+          strcat(message, " has joined!");
+          /* Inform other clients of new peers -- Send message */
           int j;
           for(j=0;j<clientCount-1;j++){
-            char message[100];
-
-            strcpy(message, inet_ntoa(clientName.sin_addr));
-            strcat(message, ":");
-            strcat(message, ntohs(clientName.sin_port));
-            strcat(message, " has connected!");
             writeMessage(client[j], message);
-
           }
 
           /* Welcome new client */
@@ -162,7 +169,8 @@ int main(int argc, char *argv[]) {
       		 inet_ntoa(clientName.sin_addr),
       		 ntohs(clientName.sin_port));
       	  FD_SET(clientSocket, &activeFdSet);
-      	}
+        }
+      }
 	else {
 	  /* Data arriving on an already connected socket */
 	  if(readMessageFromClient(i) < 0) {
