@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
   int clientCount = 0;
 
   //Blacklisted IPs
-  char blacklist_ip[] = "127.0.0.1";
+  char blacklist_ip[] = "192.168.0.1";
 
   /* Create a socket and set it up to accept connections */
   sock = makeSocket(PORT);
@@ -140,8 +140,10 @@ int main(int argc, char *argv[]) {
     	    exit(EXIT_FAILURE);
     	  }
         //Check blacklist
-        if(strcmp(inet_ntoa(clientName.sin_addr), blacklist_ip)){
+        if(strcmp(inet_ntoa(clientName.sin_addr), blacklist_ip) == 0){
           //Close connection for blacklisted IP:
+          printf("Blacklisted client %s tried to connect!\n", inet_ntoa(clientName.sin_addr));
+          close(clientSocket);
         }else{
           //Continue as normal
           /* Add connected client to list of connected clients */
