@@ -1,7 +1,13 @@
-/* File: client.c
+/* PROGRAM: client
+ * AUTHOR: Leslie Dahlberg
+ * EMAIL: ldg14001@student.mdh.se
+ * DATE: 2016-01-19
+ * File: client.c
  * Trying out socket communication between processes using the Internet protocol family.
  * Usage: client [host name], that is, if a server is running on 'lab1-6.idt.mdh.se'
  * then type 'client lab1-6.idt.mdh.se' and follow the on-screen instructions.
+ * The application can send messages to the server and recieved replies from it, the application is
+ * notified of any new clients connected to the server.
  */
 
 #include <stdio.h>
@@ -41,17 +47,17 @@ void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short 
   name->sin_addr = *(struct in_addr *)hostInfo->h_addr;
 }
 
-/* readMessageFromClient
+/* readMessageFromServer
  * Reads and prints data read from the file (socket
  * denoted by the file descriptor 'fileDescriptor'.
  */
-int readMessageFromClient(int fileDescriptor) {
+int readMessageFromServer(int fileDescriptor) {
   char buffer[MAXMSG];
   int nOfBytes;
 
   nOfBytes = read(fileDescriptor, buffer, MAXMSG);
   if(nOfBytes < 0) {
-    perror("Could not read data from client\n");
+    perror("Could not read data from server\n");
     exit(EXIT_FAILURE);
   }
   else
@@ -79,10 +85,12 @@ void writeMessage(int fileDescriptor, char *message) {
 }
 
 /* Recieve replies from server */
+// This function will be send to a new thread and be run in the background
+// void *arg recieves a socket
 void* recieveRepliesFromServer(void *arg){
   int* sock = (int*) arg;
   while(1){
-    readMessageFromClient(*sock);
+    readMessageFromServer(*sock);
   }
   return NULL;
 }
@@ -117,7 +125,10 @@ int main(int argc, char *argv[]) {
   }
 
   /* Start thread recieving replies from server */
-  pthread_create(&tid, NULL, &recieveRepliesFromServer, (void*) &sock);
+  if(pthread_create(&tid, NULL, &recieveRepliesFromServer, (void*) &sock) != 0){
+    perror("Could not start thread recieving replies from server\n");
+    exit(EXIT_FAILURE);
+  }
 
   /* Send data to the server */
   printf("\nType something and press [RETURN] to send it to the server.\n");

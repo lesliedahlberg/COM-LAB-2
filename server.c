@@ -1,5 +1,13 @@
-/* File: server.c
+/* PROGRAM: server
+ * AUTHOR: Leslie Dahlberg
+ * EMAIL: ldg14001@student.mdh.se
+ * DATE: 2016-01-19
+ * File: server.c
  * Trying out socket communication between processes using the Internet protocol family.
+ * Execute by typing "./server". Recieves messages from clients that connect to it and send back replies.
+ * Clients with the IP address listed in blacklist_ip will not be able to connect.
+ * The application acts as a server and allows multiple client connections. It will inform all
+ * clients of any new client connections.
  */
 
 #include <stdio.h>
@@ -100,7 +108,7 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in clientName;
   socklen_t size;
 
-  //Connected client sockets
+  //Connected client sockets (used for broadcasts)
   int client[100];
   int clientCount = 0;
 
@@ -139,13 +147,16 @@ int main(int argc, char *argv[]) {
     	    perror("Could not accept connection\n");
     	    exit(EXIT_FAILURE);
     	  }
-        //Check blacklist
+        //Check connected client against blacklist
         if(strcmp(inet_ntoa(clientName.sin_addr), blacklist_ip) == 0){
           //Close connection for blacklisted IP:
           printf("Blacklisted client %s tried to connect!\n", inet_ntoa(clientName.sin_addr));
-          close(clientSocket);
+          if(close(clientSocket) != 0){
+            perror("Could not close socket connection to blacklisted client\n");
+      	    exit(EXIT_FAILURE);
+          }
         }else{
-          //Continue as normal
+          //Continue as normal if not blacklisted
           /* Add connected client to list of connected clients */
           client[clientCount++] = clientSocket;
 
@@ -167,6 +178,7 @@ int main(int argc, char *argv[]) {
           /* Welcome new client */
           writeMessage(clientSocket, "Welcome dude!");
 
+          /* Announce new client on screen */
       	  printf("Server: Connect from client %s, port %d\n",
       		 inet_ntoa(clientName.sin_addr),
       		 ntohs(clientName.sin_port));
@@ -179,7 +191,7 @@ int main(int argc, char *argv[]) {
 	    close(i);
 	    FD_CLR(i, &activeFdSet);
 	  }
-    /* Reply to connected client */
+    /* Reply to recieved message */
     writeMessage(i, "I hear you, dude ...");
 	}
       }
