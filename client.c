@@ -13,10 +13,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <pthread.h>
 
 #define PORT 5555
+#define MAXMSG 512
 #define hostNameLength 50
 #define messageLength  256
+
+pthread_t tid;
 
 /* initSocketAddress
  * Initialises a sockaddr_in struct given a host name and a port.
@@ -24,11 +28,11 @@
 void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short int port) {
   struct hostent *hostInfo; /* Contains info about the host */
   /* Socket address format set to AF_INET for Internet use. */
-  name->sin_family = AF_INET;     
+  name->sin_family = AF_INET;
   /* Set port number. The function htons converts from host byte order to network byte order.*/
-  name->sin_port = htons(port);   
+  name->sin_port = htons(port);
   /* Get info about host. */
-  hostInfo = gethostbyname(hostName); 
+  hostInfo = gethostbyname(hostName);
   if(hostInfo == NULL) {
     fprintf(stderr, "initSocketAddress - Unknown host %s\n",hostName);
     exit(EXIT_FAILURE);
@@ -36,18 +40,51 @@ void initSocketAddress(struct sockaddr_in *name, char *hostName, unsigned short 
   /* Fill in the host name into the sockaddr_in struct. */
   name->sin_addr = *(struct in_addr *)hostInfo->h_addr;
 }
+
+/* readMessageFromClient
+ * Reads and prints data read from the file (socket
+ * denoted by the file descriptor 'fileDescriptor'.
+ */
+int readMessageFromClient(int fileDescriptor) {
+  char buffer[MAXMSG];
+  int nOfBytes;
+
+  nOfBytes = read(fileDescriptor, buffer, MAXMSG);
+  if(nOfBytes < 0) {
+    perror("Could not read data from client\n");
+    exit(EXIT_FAILURE);
+  }
+  else
+    if(nOfBytes == 0)
+      /* End of file */
+      return(-1);
+    else
+      /* Data read */
+      printf(">Server: %s\n",  buffer);
+  return(0);
+}
+
 /* writeMessage
- * Writes the string message to the file (socket) 
+ * Writes the string message to the file (socket)
  * denoted by fileDescriptor.
  */
 void writeMessage(int fileDescriptor, char *message) {
   int nOfBytes;
-  
+
   nOfBytes = write(fileDescriptor, message, strlen(message) + 1);
   if(nOfBytes < 0) {
     perror("writeMessage - Could not write data\n");
     exit(EXIT_FAILURE);
   }
+}
+
+/* Recieve replies from server */
+void* recieveRepliesFromServer(void *arg){
+  int* sock = (int*) arg;
+  while(1){
+    readMessageFromClient(*sock);
+  }
+  return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -78,6 +115,10 @@ int main(int argc, char *argv[]) {
     perror("Could not connect to server\n");
     exit(EXIT_FAILURE);
   }
+
+  /* Start thread recieving replies from server */
+  pthread_create(&tid, NULL, &recieveRepliesFromServer, (void*) &sock);
+
   /* Send data to the server */
   printf("\nType something and press [RETURN] to send it to the server.\n");
   printf("Type 'quit' to nuke this program.\n");
@@ -88,7 +129,7 @@ int main(int argc, char *argv[]) {
     messageString[messageLength - 1] = '\0';
     if(strncmp(messageString,"quit\n",messageLength) != 0)
       writeMessage(sock, messageString);
-    else {  
+    else {
       close(sock);
       exit(EXIT_SUCCESS);
     }
