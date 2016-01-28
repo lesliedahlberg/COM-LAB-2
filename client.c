@@ -1,11 +1,10 @@
 /* PROGRAM: client
  * AUTHOR: Leslie Dahlberg
  * EMAIL: ldg14001@student.mdh.se
- * DATE: 2016-01-19
+ * DATE: 2016-01-28
  * File: client.c
  * Trying out socket communication between processes using the Internet protocol family.
- * Usage: client [host name], that is, if a server is running on 'lab1-6.idt.mdh.se'
- * then type 'client lab1-6.idt.mdh.se' and follow the on-screen instructions.
+ * Usage: client [host name] [client IP address] [client PORT number] and follow the on-screen instructions.
  * The application can send messages to the server and recieved replies from it, the application is
  * notified of any new clients connected to the server.
  */
@@ -95,9 +94,11 @@ void* recieveRepliesFromServer(void *arg){
   return NULL;
 }
 
+//MAIN
 int main(int argc, char *argv[]) {
   int sock;
   struct sockaddr_in serverName;
+  struct sockaddr_in fakeClient;
   char hostName[hostNameLength];
   char messageString[messageLength];
 
@@ -118,6 +119,18 @@ int main(int argc, char *argv[]) {
   }
   /* Initialize the socket address */
   initSocketAddress(&serverName, hostName, PORT);
+
+  /*Init client IP*/
+  fakeClient.sin_family = AF_INET;
+  fakeClient.sin_port = htons(argv[3]);
+  fakeClient.sin_addr.s_addr = inet_addr(argv[2]);
+
+  /*Bind client to IP and PORT*/
+  if(bind(sock, (struct sockaddr *)&fakeClient, sizeof(fakeClient)) < 0) {
+    perror("Could not bind a name to the socket\n");
+    exit(EXIT_FAILURE);
+  }
+
   /* Connect to the server */
   if(connect(sock, (struct sockaddr *)&serverName, sizeof(serverName)) < 0) {
     perror("Could not connect to server\n");
@@ -138,9 +151,11 @@ int main(int argc, char *argv[]) {
     printf("\n>");
     fgets(messageString, messageLength, stdin);
     messageString[messageLength - 1] = '\0';
+    //Check if QUIT string send
     if(strncmp(messageString,"quit\n",messageLength) != 0)
       writeMessage(sock, messageString);
     else {
+      //QUIT
       close(sock);
       exit(EXIT_SUCCESS);
     }

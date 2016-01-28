@@ -1,7 +1,7 @@
 /* PROGRAM: server
  * AUTHOR: Leslie Dahlberg
  * EMAIL: ldg14001@student.mdh.se
- * DATE: 2016-01-19
+ * DATE: 2016-01-28
  * File: server.c
  * Trying out socket communication between processes using the Internet protocol family.
  * Execute by typing "./server". Recieves messages from clients that connect to it and send back replies.
@@ -95,8 +95,7 @@ void writeMessage(int fileDescriptor, char *message) {
 
   nOfBytes = write(fileDescriptor, message, strlen(message) + 1);
   if(nOfBytes < 0) {
-    perror("writeMessage - Could not write data\n");
-    exit(EXIT_FAILURE);
+    printf(">>Connection with client lost!\n");
   }
 }
 
@@ -113,7 +112,7 @@ int main(int argc, char *argv[]) {
   int clientCount = 0;
 
   //Blacklisted IPs
-  char blacklist_ip[] = "192.168.0.1";
+  char blacklist_ip[] = "127.0.0.2";
 
   /* Create a socket and set it up to accept connections */
   sock = makeSocket(PORT);
@@ -151,6 +150,7 @@ int main(int argc, char *argv[]) {
         if(strcmp(inet_ntoa(clientName.sin_addr), blacklist_ip) == 0){
           //Close connection for blacklisted IP:
           printf("Blacklisted client %s tried to connect!\n", inet_ntoa(clientName.sin_addr));
+          writeMessage(clientSocket, "BANNED IP!");
           if(close(clientSocket) != 0){
             perror("Could not close socket connection to blacklisted client\n");
       	    exit(EXIT_FAILURE);

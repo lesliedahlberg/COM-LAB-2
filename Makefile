@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -pthread
-PROGRAMS = client server
+PROGRAMS = client client_ip2 server
 
 ALL: ${PROGRAMS}
 
