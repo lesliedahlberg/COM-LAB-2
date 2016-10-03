@@ -1,5 +1,5 @@
 # Unix-Sockets-Shell-Chat
-Simple test of Unix Sockets
+Chat server and client written with Unix sockets.
 
 ## Usage
 To compile the application run “make” in the application directory. This results in two files: client and server.
